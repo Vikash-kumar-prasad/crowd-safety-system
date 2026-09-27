@@ -1,0 +1,60 @@
+# ============================================================
+# Python Virtual Environment & Bytecode
+# ============================================================
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.env
+
+# ============================================================
+# Large Archives & Datasets (Exceeds GitHub 100 MB Limit)
+# ============================================================
+*.zip
+*.tar.gz
+*.7z
+*.rar
+dataset/raw*
+dataset/processed*
+!dataset/raw/.gitkeep
+!dataset/processed/.gitkeep
+
+# ============================================================
+# AI Models
+# Ignore experimental checkpoints; track only the 2 production weights
+# ============================================================
+models/*.pt
+!models/best.pt
+!models/best_weapon_v4.pt
+models/*.h5
+
+# ============================================================
+# Runtime Forensic Snapshots, Alert Logs & Test Dumps
+# Prevents uploading local webcam photos / test run artifacts
+# ============================================================
+notebooks/alerts/snapshots/*
+!notebooks/alerts/snapshots/.gitkeep
+notebooks/alerts/alerts.json
+notebooks/*_output/
+notebooks/*_result/
+notebooks/weapon_debug_captures/
+backend/snapshots/*
+backend/static/test_*.jpg
+dataset/demo_showcase/test_output/
+*.log
+
+# ============================================================
+# Frontend / Node Build Artifacts
+# ============================================================
+dashboard/node_modules/
+dashboard/build/
+dashboard/.env
+
+# ============================================================
+# OS & IDE Settings
+# ============================================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

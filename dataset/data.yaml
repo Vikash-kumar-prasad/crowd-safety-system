@@ -1,0 +1,13 @@
+path: .
+train:
+  - raw/PartA/train/images
+  - raw/PartB/train/images
+val:
+  - raw/PartA/valid/images
+  - raw/PartB/valid/images
+test:
+  - raw/PartA/test/images
+  - raw/PartB/test/images
+
+nc: 1
+names: ['head']

@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Crowd Safety & Threat Detection</title>
+    <style>
+        :root {
+            --bg-primary: #0b0e13;
+            --bg-secondary: #111520;
+            --bg-card: #161b27;
+            --border: #1e2533;
+            --border-hover: #2a3347;
+            --text-primary: #e2e8f0;
+            --text-secondary: #8892a4;
+            --text-muted: #505a6e;
+            --accent: #3b82f6;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger-med: #f97316;
+            --danger: #ef4444;
+            --mono: 'JetBrains Mono', 'SF Mono', 'Consolas', 'Menlo', monospace;
+            --sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--sans);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .mono {
+            font-family: var(--mono);
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 64px;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .status-dot.online { background-color: var(--success); }
+        .status-dot.offline { background-color: var(--danger); }
+
+        .demo-badge {
+            background-color: rgba(234, 179, 8, 0.15);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .btn-sound-toggle {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+        .btn-sound-toggle:hover {
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+        .btn-sound-toggle.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(59, 130, 246, 0.12);
+        }
+
+        .btn-export-csv {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .btn-export-csv:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .left-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 0;
+            overflow-y: auto;
+        }
+
+        .right-col {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        /* Risk Banner */
+        .risk-banner {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+
+        .risk-info h2 {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.25rem;
+        }
+
+        .risk-level {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 0.25rem;
+        }
+
+        .risk-reasons {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .risk-banner.low { border-left: 6px solid var(--success); }
+        .risk-banner.low .risk-level { color: var(--success); }
+        
+        .risk-banner.medium { border-left: 6px solid var(--warning); }
+        .risk-banner.medium .risk-level { color: var(--warning); }
+        
+        .risk-banner.high { border-left: 6px solid var(--danger-med); }
+        .risk-banner.high .risk-level { color: var(--danger-med); }
+        
+        .risk-banner.critical { 
+            border-left: 6px solid var(--danger);
+            background-color: rgba(239, 68, 68, 0.05);
+            animation: pulse-critical 2s infinite;
+        }
+        .risk-banner.critical .risk-level { color: var(--danger); }
+
+        @keyframes pulse-critical {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Video Feed */
+        .video-container {
+            background-color: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+            max-height: 440px;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(0,0,0,0.6);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .video-state {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-retry {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .btn-retry:hover { background: #2563eb; }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .metric-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .metric-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .text-danger { color: var(--danger) !important; }
+        .text-warning { color: var(--warning) !important; }
+
+        /* Sparkline */
+        .sparkline-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            height: 100px;
+        }
+
+        .sparkline-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .sparkline-path {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 2;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        /* Sidebar Panels */
+        .panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge-count {
+            background: var(--border);
+            padding: 0.125rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+        }
+
+        .alerts-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .alert-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .alert-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .alert-item.low { border-left-color: var(--success); }
+        .alert-item.medium { border-left-color: var(--warning); }
+        .alert-item.high { border-left-color: var(--danger-med); }
+        .alert-item.critical { border-left-color: var(--danger); }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .alert-time { color: var(--text-secondary); }
+        
+        .alert-level {
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+        
+        .alert-item.low .alert-level { color: var(--success); }
+        .alert-item.medium .alert-level { color: var(--warning); }
+        .alert-item.high .alert-level { color: var(--danger-med); }
+        .alert-item.critical .alert-level { color: var(--danger); }
+
+        .alert-reason {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* System Info */
+        .sys-info-panel {
+            padding: 1rem;
+        }
+        .sys-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .sys-row:last-child { margin-bottom: 0; }
+        .sys-label { color: var(--text-secondary); }
+        .sys-value { font-weight: 500; }
+
+        /* Connection Lost Banner */
+        #conn-lost {
+            background: #ef4444;
+            color: #ffffff;
+            text-align: center;
+            padding: 0.6rem 1rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 50;
+            display: none;
+        }
+
+        /* Dispatch Styles */
+        .dispatch-card {
+            background: rgba(239, 68, 68, 0.08);
+            border-left: 3px solid var(--danger);
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.75rem;
+        }
+        .dispatch-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            color: var(--danger);
+            margin-bottom: 2px;
+        }
+        .dispatch-meta {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+        .btn-quick-sample {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-quick-sample:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-1px);
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 2rem;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title { font-weight: 600; }
+        .btn-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .btn-close:hover { color: white; }
+        .modal-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .modal-img {
+            width: 100%;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+        .modal-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        @media (max-width: 1024px) {
+            .right-col { width: 280px; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            body { overflow: auto; }
+            main { flex-direction: column; overflow: visible; }
+            .right-col { width: 100%; flex: none; height: auto; }
+            .alerts-list { max-height: 400px; }
+            .metrics-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">AI-Powered Crowd Safety & Threat Detection</div>
+        <div class="header-controls">
+            <div id="demo-badge" class="demo-badge">DEMO MODE</div>
+            <button class="btn-sound-toggle" onclick="openSourceModal()" title="Switch live video feed (Webcam, Crowd Panic, Weapon Threat, CCTV RTSP)">
+                <span>📹</span>
+                <span id="active-source-badge">Source: Webcam</span>
+            </button>
+            <button class="btn-sound-toggle" onclick="openUploadModal()" title="Upload and analyze a static test image">
+                <span>🖼️</span>
+                <span>Upload Image</span>
+            </button>
+            <button id="btn-sound" class="btn-sound-toggle" onclick="toggleSound()" title="Toggle audible threat siren">
+                <span id="sound-icon">🔇</span>
+                <span id="sound-text">Alarm: OFF</span>
+            </button>
+            <div class="mono" id="clock">00:00:00</div>
+            <div class="status-badge">
+                <div class="status-dot online" id="sys-status-dot"></div>
+                <span id="sys-status-text">Online</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="conn-lost">⚠️ CONNECTION LOST — Reconnecting to detection server...</div>
+
+    <!-- Emergency Dispatch Toast Banner -->
+    <div id="dispatch-toast" style="display:none; position:fixed; top:70px; right:20px; z-index:9999; background:linear-gradient(135deg, #1c0a0a, #331010); border:1px solid #ef4444; box-shadow:0 8px 30px rgba(239,68,68,0.5); border-radius:8px; padding:1rem 1.25rem; max-width:380px; color:#fff; animation: slideInRight 0.3s ease-out;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; color:#ef4444; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">
+                <span>🚨 EMERGENCY DISPATCH SENT</span>
+            </div>
+            <button onclick="document.getElementById('dispatch-toast').style.display='none'" style="background:none; border:none; color:#8892a4; cursor:pointer; font-size:1.2rem; line-height:1;">&times;</button>
+        </div>
+        <div id="dispatch-toast-content" style="font-size:0.78rem; line-height:1.4; color:#e2e8f0;"></div>
+    </div>
+
+    <main>
+        <div class="left-col">
+            <div class="risk-banner low" id="risk-banner">
+                <div class="risk-info">
+                    <h2>Current Risk Status</h2>
+                    <div class="risk-level" id="risk-level-text">LOW</div>
+                    <div class="risk-reasons" id="risk-reasons-text">Initializing system...</div>
+                </div>
+            </div>
+
+            <div class="video-container">
+                <div class="video-overlay mono" id="cam-id">CAM-01</div>
+                <img id="video-stream" class="video-feed" src="/video_feed" alt="Live Feed" />
+                <div id="video-loading" class="video-state">
+                    <div>Connecting to video feed...</div>
+                </div>
+                <div id="video-error" class="video-state" style="display:none;">
+                    <div>Video feed lost</div>
+                    <button class="btn-retry" onclick="retryVideo()">Retry Connection</button>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">People Detected</div>
+                    <div class="metric-value mono" id="val-heads">-</div>
+                    <div class="metric-sub">Total distinct individuals</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Crowd Density</div>
+                    <div class="metric-value" id="val-density">-</div>
+                    <div class="metric-sub mono">Score: <span id="val-density-score">-</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Behavior Status</div>
+                    <div class="metric-value" id="val-behavior">-</div>
+                    <div class="metric-sub mono">Motion: <span id="val-motion">-</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Weapons Detected</div>
+                    <div class="metric-value mono" id="val-weapons">-</div>
+                    <div class="metric-sub">Confidence > 60%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Threat Level</div>
+                    <div class="metric-value" id="val-threat">-</div>
+                    <div class="metric-sub">Current assessment</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Pipeline FPS</div>
+                    <div class="metric-value mono" id="val-fps">-</div>
+                    <div class="metric-sub">Processing speed</div>
+                </div>
+            </div>
+
+            <div class="sparkline-container">
+                <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.5rem; text-transform:uppercase;">Risk Trend (Last 60 readings)</div>
+                <svg class="sparkline-svg" preserveAspectRatio="none">
+                    <path class="sparkline-path" id="sparkline-path" d=""></path>
+                </svg>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div class="panel" style="flex: 1;">
+                <div class="panel-header">
+                    <span>Event Timeline</span>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span class="badge-count mono" id="alerts-count">0</span>
+                        <button class="btn-export-csv" onclick="exportAlertsCSV()" title="Export incident history as CSV spreadsheet">📥 Export CSV</button>
+                    </div>
+                </div>
+                <div class="alerts-list" id="alerts-list">
+                    <div class="empty-state">Waiting for alert data...</div>
+                </div>
+            </div>
+
+            <div class="panel" style="flex: none;">
+                <div class="panel-header">System Information</div>
+                <div class="sys-info-panel">
+                    <div class="sys-row">
+                        <span class="sys-label">Pipeline</span>
+                        <span class="sys-value" id="sys-pipeline">-</span>
+                    </div>
+                    <div class="sys-row">
+                        <span class="sys-label">Camera</span>
+                        <span class="sys-value" id="sys-camera">-</span>
+                    </div>
+                    <div class="sys-row">
+                        <span class="sys-label">Models Loaded</span>
+                        <span class="sys-value" id="sys-models">-</span>
+                    </div>
+                    <div class="sys-row">
+                        <span class="sys-label">Uptime</span>
+                        <span class="sys-value mono" id="sys-uptime">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Dispatch Console Panel -->
+            <div class="panel" style="flex: none;" id="dispatch-panel">
+                <div class="panel-header" style="border-left: 3px solid var(--danger);">
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span>🚨</span>
+                        <span>Emergency Dispatch</span>
+                    </div>
+                    <button class="btn-export-csv" onclick="triggerTestDrill()" style="background:rgba(239, 68, 68, 0.15); color:var(--danger); border-color:var(--danger); font-size:0.7rem; padding:2px 8px;" title="Trigger simulated tactical emergency drill">⚡ Test Drill</button>
+                </div>
+                <div class="sys-info-panel" id="dispatch-feed" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem; font-size:0.75rem;">
+                    <div style="color:var(--text-secondary); text-align:center; padding:0.4rem 0;">
+                        Standby. Auto-broadcasting to Police &amp; QRT on Critical threats.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="alert-modal" onclick="if(event.target===this) closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Alert Details</div>
+                <button class="btn-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="modal-img" class="modal-img" src="" alt="Alert Snapshot" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%\' height=\'300\'><rect width=\'100%\' height=\'100%\' fill=\'%231e2533\'/><text x=\'50%\' y=\'50%\' fill=\'%238892a4\' text-anchor=\'middle\'>Image not available</text></svg>'">
+                <div class="modal-details">
+                    <div>
+                        <div class="sys-label" style="font-size:0.75rem;">Timestamp</div>
+                        <div class="mono" id="modal-time" style="margin-bottom:0.75rem;">-</div>
+                        
+                        <div class="sys-label" style="font-size:0.75rem;">Risk Level</div>
+                        <div id="modal-risk" style="margin-bottom:0.75rem; font-weight:600;">-</div>
+                        
+                        <div class="sys-label" style="font-size:0.75rem;">Reasons</div>
+                        <div id="modal-reasons" style="margin-bottom:0.75rem;">-</div>
+                    </div>
+                    <div>
+                        <div class="sys-label" style="font-size:0.75rem;">People Detected</div>
+                        <div class="mono" id="modal-heads" style="margin-bottom:0.75rem;">-</div>
+                        
+                        <div class="sys-label" style="font-size:0.75rem;">Crowd Density</div>
+                        <div id="modal-density" style="margin-bottom:0.75rem;">-</div>
+                        
+                        <div class="sys-label" style="font-size:0.75rem;">Behavior Status</div>
+                        <div id="modal-behavior" style="margin-bottom:0.75rem;">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Image Analysis Modal -->
+    <div class="modal-overlay" id="upload-modal" onclick="if(event.target===this) closeUploadModal()">
+        <div class="modal-content" style="max-width: 850px;">
+            <div class="modal-header">
+                <div class="modal-title">🖼️ Upload & Test Static Image</div>
+                <button class="btn-close" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                    <input type="file" id="image-upload-input" accept="image/*" style="display:none;" onchange="handleImageSelected(event)">
+                    <button class="btn-retry" onclick="document.getElementById('image-upload-input').click()">📁 Select Image</button>
+                    <span id="selected-filename" style="color:var(--text-secondary); font-size:0.85rem;">No file chosen</span>
+                    <button id="btn-process-upload" class="btn-retry" style="background:var(--success); display:none;" onclick="processUploadedImage()">⚡ Analyze Image</button>
+                </div>
+
+                <!-- One-Click Viva Showcase Samples -->
+                <div style="display:flex; flex-direction:column; gap:0.5rem; background:var(--bg-secondary); border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem;">
+                    <div style="font-weight:600; color:var(--text-primary); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">
+                        ⚡ One-Click Presentation Test Scenarios:
+                    </div>
+                    <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn-quick-sample" onclick="loadQuickSample('handgun', 'Handgun Threat (handgun_threat.jpg)')" style="border-left:3px solid var(--danger);">🔫 Handgun Threat</button>
+                        <button type="button" class="btn-quick-sample" onclick="loadQuickSample('knife', 'Knife / Dagger Threat (knife_threat.jpg)')" style="border-left:3px solid var(--danger);">🔪 Knife / Blade Threat</button>
+                        <button type="button" class="btn-quick-sample" onclick="loadQuickSample('multi_weapon', 'Multiple Armed Suspects (multi_weapon.jpg)')" style="border-left:3px solid var(--danger);">🎯 4x Weapons Confrontation</button>
+                        <button type="button" class="btn-quick-sample" onclick="loadQuickSample('dense_crowd', 'Massive Crowd Bottleneck (dense_crowd.jpg)')" style="border-left:3px solid var(--danger-med);">👥 77-Head Stampede Risk</button>
+                        <button type="button" class="btn-quick-sample" onclick="loadQuickSample('medium_crowd', 'Classroom Crowd (medium_crowd.jpg)')" style="border-left:3px solid var(--warning);">🏫 24-Head Medium Flow</button>
+                        <button type="button" class="btn-quick-sample" onclick="loadQuickSample('calm_crowd', 'Calm Baseline (calm_crowd.jpg)')" style="border-left:3px solid var(--success);">🟢 Safe Baseline Flow</button>
+                    </div>
+                </div>
+
+                <div id="upload-loading" style="display:none; color:var(--accent); font-weight:500; font-size:0.9rem;">
+                    ⏳ Running YOLOv8 detection and density analysis...
+                </div>
+
+                <div id="upload-result" style="display:none; flex-direction:column; gap:1rem;">
+                    <img id="upload-result-img" class="modal-img" src="" alt="Analyzed Result" style="max-height:480px; object-fit:contain; background:#000;">
+                    <div class="modal-details" style="grid-template-columns: repeat(3, 1fr);">
+                        <div>
+                            <div class="sys-label" style="font-size:0.75rem;">People Detected</div>
+                            <div class="mono" id="up-val-heads" style="font-size:1.5rem; font-weight:700;">-</div>
+                        </div>
+                        <div>
+                            <div class="sys-label" style="font-size:0.75rem;">Crowd Density</div>
+                            <div id="up-val-density" style="font-size:1.25rem; font-weight:700;">-</div>
+                            <div class="mono" id="up-val-score" style="font-size:0.75rem; color:var(--text-secondary);">-</div>
+                        </div>
+                        <div>
+                            <div class="sys-label" style="font-size:0.75rem;">Weapons Detected</div>
+                            <div class="mono" id="up-val-weapons" style="font-size:1.5rem; font-weight:700;">-</div>
+                        </div>
+                        <div style="grid-column: span 3; border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                            <div class="sys-label" style="font-size:0.75rem;">Risk Assessment</div>
+                            <div id="up-val-risk" style="font-size:1.25rem; font-weight:700; margin-bottom:0.25rem;">-</div>
+                            <div id="up-val-reasons" style="font-size:0.85rem; color:var(--text-secondary);">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Source Switcher Modal -->
+    <div class="modal-overlay" id="source-modal" onclick="if(event.target===this) closeSourceModal()">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <div class="modal-title">📹 Switch Video Input Source</div>
+                <button class="btn-close" onclick="closeSourceModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="gap:1rem;">
+                <div style="font-size:0.85rem; color:var(--text-secondary);">
+                    Select a video feed to process through the AI detection pipeline in real-time. The system switches feeds dynamically without restarting the server:
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                    <!-- Webcam -->
+                    <div class="dispatch-card" style="border-left-color:var(--accent); background:var(--bg-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem;" onclick="switchSource('webcam')">
+                        <div>
+                            <div style="font-weight:600; color:var(--text-primary); font-size:0.9rem;">📷 Live Laptop Webcam</div>
+                            <div class="dispatch-meta">Real-time local camera capture (Default CAM-01)</div>
+                        </div>
+                        <button class="btn-retry" style="font-size:0.75rem; padding:4px 10px;">Select Feed</button>
+                    </div>
+
+                    <!-- Crowd Walking -->
+                    <div class="dispatch-card" style="border-left-color:var(--warning); background:var(--bg-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem;" onclick="switchSource('crowd_walking')">
+                        <div>
+                            <div style="font-weight:600; color:var(--text-primary); font-size:0.9rem;">👥 Continuous Crowd Walking</div>
+                            <div class="dispatch-meta">Multi-person pedestrian concourse flow (crowd_test_video.mp4)</div>
+                        </div>
+                        <button class="btn-retry" style="font-size:0.75rem; padding:4px 10px;">Select Feed</button>
+                    </div>
+
+                    <!-- Crowd Panic / Running -->
+                    <div class="dispatch-card" style="border-left-color:var(--danger-med); background:var(--bg-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem;" onclick="switchSource('crowd_panic')">
+                        <div>
+                            <div style="font-weight:600; color:var(--text-primary); font-size:0.9rem;">🏃 Crowd Panic / Stampede Evacuation</div>
+                            <div class="dispatch-meta">Rapid dispersal &amp; sudden high motion surge (crowd_running_test.mp4)</div>
+                        </div>
+                        <button class="btn-retry" style="font-size:0.75rem; padding:4px 10px; background:var(--danger-med);">Select Feed</button>
+                    </div>
+
+                    <!-- Weapon Threat Video -->
+                    <div class="dispatch-card" style="border-left-color:var(--danger); background:var(--bg-secondary); cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem;" onclick="switchSource('weapon_threat')">
+                        <div>
+                            <div style="font-weight:600; color:var(--text-primary); font-size:0.9rem;">🔫 Armed Threat Confrontation</div>
+                            <div class="dispatch-meta">Suspect with firearm — triggers Critical alarm &amp; dispatch (weapon_test_video.mp4)</div>
+                        </div>
+                        <button class="btn-retry" style="font-size:0.75rem; padding:4px 10px; background:var(--danger);">Select Feed</button>
+                    </div>
+
+                    <!-- Custom IP CCTV / RTSP -->
+                    <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; padding:0.75rem 1rem; display:flex; flex-direction:column; gap:0.5rem;">
+                        <div style="font-weight:600; color:var(--text-primary); font-size:0.85rem;">🌐 Connect Network IP CCTV (RTSP Stream)</div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <input type="text" id="custom-rtsp-input" placeholder="rtsp://admin:password@192.168.1.100:554/stream1" style="flex:1; background:var(--bg-primary); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:4px; font-size:0.8rem; font-family:var(--mono);">
+                            <button class="btn-retry" style="background:var(--accent); font-size:0.75rem; padding:4px 12px;" onclick="connectCustomRtsp()">Connect</button>
+                        </div>
+                        <div style="font-size:0.7rem; color:var(--text-secondary);">Supports standard H.264/H.265 RTSP or HTTP IP surveillance cameras.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let failCount = 0;
+        let riskHistory = [];
+        const MAX_HISTORY = 60;
+        const RISK_MAP = { 'Low': 1, 'Medium': 2, 'High': 3, 'Critical': 4 };
+
+        // Video Source Switcher Logic
+        function openSourceModal() {
+            document.getElementById('source-modal').style.display = 'flex';
+        }
+
+        function closeSourceModal() {
+            document.getElementById('source-modal').style.display = 'none';
+        }
+
+        async function switchSource(sourceType) {
+            try {
+                const res = await fetch('/api/set_source', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source_type: sourceType })
+                });
+                if (!res.ok) throw new Error("Server rejected source switch");
+                const data = await res.json();
+
+                const badge = document.getElementById('active-source-badge');
+                if (badge) badge.textContent = `Source: ${data.label.split(' ')[0]}`;
+                const camId = document.getElementById('cam-id');
+                if (camId) camId.textContent = data.camera_id;
+
+                riskHistory = [];
+                showSourceToast(`Switched to: ${data.label} (${data.camera_id})`);
+                closeSourceModal();
+            } catch (err) {
+                alert("Failed to switch source: " + err.message);
+            }
+        }
+
+        async function connectCustomRtsp() {
+            const input = document.getElementById('custom-rtsp-input');
+            const url = (input.value || '').trim();
+            if (!url) {
+                alert("Please enter a valid RTSP or HTTP video stream URL.");
+                return;
+            }
+            try {
+                const res = await fetch('/api/set_source', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source_type: 'custom', custom_url: url })
+                });
+                if (!res.ok) throw new Error("Could not connect to stream URL");
+                const data = await res.json();
+                const badge = document.getElementById('active-source-badge');
+                if (badge) badge.textContent = "Source: Network CCTV";
+                showSourceToast(`Connected to Network CCTV: ${url}`);
+                closeSourceModal();
+            } catch (err) {
+                alert("Stream connection error: " + err.message);
+            }
+        }
+
+        function showSourceToast(message) {
+            const toast = document.getElementById('dispatch-toast');
+            const content = document.getElementById('dispatch-toast-content');
+            if (!toast || !content) return;
+            content.innerHTML = `
+                <div style="font-family:var(--mono); font-weight:700; color:var(--accent); margin-bottom:4px;">VIDEO SOURCE SWITCHED</div>
+                <div style="margin-bottom:4px; font-weight:500;">${message}</div>
+                <div style="font-size:0.7rem; color:var(--text-secondary);">AI pipeline processing active on new video channel.</div>
+            `;
+            toast.style.display = 'block';
+            clearTimeout(window._toastTimeout);
+            window._toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+
+        // Upload Image Analysis Modal Logic
+        let selectedUploadFile = null;
+
+        function openUploadModal() {
+            document.getElementById('upload-modal').style.display = 'flex';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('upload-modal').style.display = 'none';
+        }
+
+        function handleImageSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            selectedUploadFile = file;
+            document.getElementById('selected-filename').textContent = file.name;
+            document.getElementById('btn-process-upload').style.display = 'inline-block';
+            document.getElementById('upload-result').style.display = 'none';
+        }
+
+        async function loadQuickSample(sampleKey, displayName) {
+            const loading = document.getElementById('upload-loading');
+            const resultBox = document.getElementById('upload-result');
+            const filenameLabel = document.getElementById('selected-filename');
+            
+            filenameLabel.textContent = displayName;
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+            
+            try {
+                const resp = await fetch(`/api/sample_image/${sampleKey}`);
+                if (!resp.ok) throw new Error("Could not load sample image from server");
+                const blob = await resp.blob();
+                selectedUploadFile = new File([blob], `${sampleKey}_sample.jpg`, { type: 'image/jpeg' });
+                document.getElementById('btn-process-upload').style.display = 'inline-block';
+                await processUploadedImage();
+            } catch (e) {
+                alert("Failed to load sample: " + e.message);
+                loading.style.display = 'none';
+            }
+        }
+
+        async function processUploadedImage() {
+            if (!selectedUploadFile) return;
+
+            const btn = document.getElementById('btn-process-upload');
+            const loading = document.getElementById('upload-loading');
+            const resultBox = document.getElementById('upload-result');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedUploadFile);
+
+                const res = await fetch('/api/analyze_image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.error || 'Server error ' + res.status);
+                }
+
+                const data = await res.json();
+
+                // Render Result Image
+                document.getElementById('upload-result-img').src = data.annotated_image;
+                document.getElementById('up-val-heads').textContent = data.heads;
+                document.getElementById('up-val-density').textContent = data.density_level;
+                document.getElementById('up-val-score').textContent = `Score: ${data.density_score.toFixed(5)}`;
+                
+                const wEl = document.getElementById('up-val-weapons');
+                wEl.textContent = data.weapons_detected;
+                if (data.weapons_detected > 0) wEl.classList.add('text-danger');
+                else wEl.classList.remove('text-danger');
+
+                const rEl = document.getElementById('up-val-risk');
+                rEl.textContent = data.risk_level.toUpperCase();
+                const lc = data.risk_level.toLowerCase();
+                rEl.style.color = lc === 'critical' ? 'var(--danger)' :
+                                 lc === 'high' ? 'var(--danger-med)' :
+                                 lc === 'medium' ? 'var(--warning)' : 'var(--success)';
+
+                document.getElementById('up-val-reasons').textContent = (data.risk_reasons && data.risk_reasons.length > 0)
+                    ? data.risk_reasons.join(' • ')
+                    : 'No significant risk factors detected';
+
+                resultBox.style.display = 'flex';
+
+                // If this image detection triggered a critical emergency broadcast:
+                if (data.dispatch) {
+                    showDispatchToast(data.dispatch);
+                    fetchDispatches();
+                }
+
+            } catch (err) {
+                alert('Analysis failed: ' + err.message);
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        // Clock
+        setInterval(() => {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+        }, 1000);
+
+        // Uptime formatter
+        function formatUptime(seconds) {
+            if (typeof seconds !== 'number') return '-';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        // Web Audio Alarm Synthesizer (Zero external files needed)
+        let soundEnabled = false;
+        let audioCtx = null;
+        let lastAlarmSoundTime = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            initAudio();
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('btn-sound');
+            const icon = document.getElementById('sound-icon');
+            const text = document.getElementById('sound-text');
+            
+            if (soundEnabled) {
+                btn.classList.add('active');
+                icon.textContent = '🔊';
+                text.textContent = 'Alarm: ON';
+                // Play soft confirmation chirp
+                playAlertSound('Medium');
+            } else {
+                btn.classList.remove('active');
+                icon.textContent = '🔇';
+                text.textContent = 'Alarm: OFF';
+            }
+        }
+
+        function playAlertSound(level) {
+            if (!soundEnabled || !audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const now = audioCtx.currentTime;
+                
+                if (level === 'Critical') {
+                    // Two-tone tactical alarm siren
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.linearRampToValueAtTime(587, now + 0.18);
+                    osc.frequency.linearRampToValueAtTime(880, now + 0.36);
+                    
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.45);
+                } else if (level === 'High') {
+                    // Double warning beep
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(659, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (level === 'Medium') {
+                    // Gentle confirmation chirp
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523, now);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                }
+            } catch (e) {
+                console.warn('Audio playback error:', e);
+            }
+        }
+
+        // Tactical Emergency Radio Chirp Sound
+        function playDispatchChirp() {
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.linearRampToValueAtTime(1400, now + 0.12);
+                osc.frequency.linearRampToValueAtTime(950, now + 0.22);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } catch(e){}
+        }
+
+        // Emergency Dispatch Logic
+        let seenDispatchIds = new Set();
+        let initialDispatchesLoaded = false;
+
+        async function fetchDispatches() {
+            try {
+                const res = await fetch('/api/dispatches');
+                if (!res.ok) return;
+                const dispatches = await res.json();
+                renderDispatches(dispatches);
+            } catch(e) {
+                console.error("Dispatches fetch error:", e);
+            }
+        }
+
+        function renderDispatches(dispatches) {
+            const feed = document.getElementById('dispatch-feed');
+            if (!feed) return;
+
+            if (!dispatches || dispatches.length === 0) {
+                feed.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:0.4rem 0;">Standby. Auto-broadcasting to Police & QRT on Critical threats.</div>';
+                return;
+            }
+
+            // Check if there is a new dispatch we haven't toasted for
+            const newest = dispatches[0];
+            if (newest && !seenDispatchIds.has(newest.ticket_id)) {
+                seenDispatchIds.add(newest.ticket_id);
+                if (initialDispatchesLoaded) {
+                    showDispatchToast(newest);
+                }
+            }
+            initialDispatchesLoaded = true;
+
+            feed.innerHTML = dispatches.slice(0, 4).map(d => `
+                <div class="dispatch-card">
+                    <div class="dispatch-header">
+                        <span>${d.ticket_id}</span>
+                        <span style="font-size:0.65rem; color:var(--success); font-weight:600;">✓ ACK 200 OK</span>
+                    </div>
+                    <div style="font-weight:600; margin-bottom:2px; color:var(--text-primary);">${d.threat_type}</div>
+                    <div class="dispatch-meta">
+                        <span>📍 ${d.camera_id}</span> • <span>🕒 ${d.timestamp ? d.timestamp.split(' ')[1] : ''}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function triggerTestDrill() {
+            try {
+                const res = await fetch('/api/dispatches/test', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.dispatch) {
+                        showDispatchToast(data.dispatch);
+                        fetchDispatches();
+                    }
+                }
+            } catch(e) {
+                alert("Failed to trigger drill: " + e.message);
+            }
+        }
+
+        function showDispatchToast(dispatch) {
+            playDispatchChirp();
+            const toast = document.getElementById('dispatch-toast');
+            const content = document.getElementById('dispatch-toast-content');
+            if (!toast || !content) return;
+
+            content.innerHTML = `
+                <div style="font-family:var(--mono); font-weight:700; color:#ef4444; margin-bottom:4px;">${dispatch.ticket_id}</div>
+                <div style="margin-bottom:6px;"><strong>Threat:</strong> ${dispatch.threat_type}</div>
+                <div style="margin-bottom:6px; color:#93c5fd;"><strong>Broadcasted To:</strong> Police CAD, Campus QRT-1, SOC Control Desk</div>
+                <div style="font-size:0.7rem; color:var(--text-secondary); display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.1); padding-top:4px;">
+                    <span>📍 ${dispatch.camera_id}</span>
+                    <span style="color:var(--success); font-weight:600;">✓ Latency: ${dispatch.latency_ms || 35}ms</span>
+                </div>
+            `;
+            toast.style.display = 'block';
+            clearTimeout(window._toastTimeout);
+            window._toastTimeout = setTimeout(() => {
+                toast.style.display = 'none';
+            }, 8000);
+        }
+
+        // Connection status UI
+        function setConnectionStatus(isOnline) {
+            const dot = document.getElementById('sys-status-dot');
+            const text = document.getElementById('sys-status-text');
+            const banner = document.getElementById('conn-lost');
+            
+            if (isOnline) {
+                dot.className = 'status-dot online';
+                text.textContent = 'Online';
+                banner.style.display = 'none';
+                failCount = 0;
+            } else {
+                failCount++;
+                if (failCount >= 3) {
+                    dot.className = 'status-dot offline';
+                    text.textContent = 'Offline';
+                    banner.style.display = 'block';
+                }
+            }
+        }
+
+        // Fetch Status
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status', { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                
+                setConnectionStatus(true);
+                try {
+                    updateDashboard(data);
+                } catch (renderErr) {
+                    console.error('Dashboard render error:', renderErr);
+                }
+            } catch (err) {
+                setConnectionStatus(false);
+                console.error('Status fetch error:', err);
+            }
+        }
+
+        function updateDashboard(data) {
+            if (!data) return;
+
+            // Risk Banner
+            const banner = document.getElementById('risk-banner');
+            const levelClass = (data.risk_level || 'Low').toLowerCase();
+            banner.className = `risk-banner ${levelClass}`;
+            
+            document.getElementById('risk-level-text').textContent = (data.risk_level || 'UNKNOWN').toUpperCase();
+            
+            const reasons = (Array.isArray(data.risk_reasons) && data.risk_reasons.length > 0)
+                ? data.risk_reasons.join(' • ')
+                : 'No significant risk factors detected';
+            document.getElementById('risk-reasons-text').textContent = reasons;
+            
+            // Demo Badge
+            const demoBadge = document.getElementById('demo-badge');
+            if (demoBadge) {
+                demoBadge.style.display = data.demo_mode ? 'block' : 'none';
+            }
+            const camEl = document.getElementById('cam-id');
+            if (camEl) {
+                camEl.textContent = data.camera_id || 'CAM-01';
+            }
+            
+            // Metrics
+            document.getElementById('val-heads').textContent = (data.heads !== undefined && data.heads !== null) ? data.heads : '0';
+            
+            const weaponsCount = data.weapons_detected || 0;
+            const wEl = document.getElementById('val-weapons');
+            wEl.textContent = weaponsCount;
+            if (weaponsCount > 0) wEl.classList.add('text-danger');
+            else wEl.classList.remove('text-danger');
+
+            document.getElementById('val-density').textContent = data.density_level || 'Low';
+            document.getElementById('val-density-score').textContent = (typeof data.density_score === 'number') ? data.density_score.toFixed(5) : '0.00000';
+            
+            document.getElementById('val-behavior').textContent = data.behavior_status || 'Normal';
+            const mScore = data.behavior_detail?.motion_score;
+            document.getElementById('val-motion').textContent = (typeof mScore === 'number') ? mScore.toFixed(2) : '0.00';
+            
+            document.getElementById('val-threat').textContent = data.threat_level || 'None';
+            document.getElementById('val-fps').textContent = (typeof data.fps === 'number' && data.fps > 0) ? data.fps.toFixed(1) : '-';
+
+            // Sparkline
+            const rVal = RISK_MAP[data.risk_level] || 1;
+            riskHistory.push(rVal);
+            if (riskHistory.length > MAX_HISTORY) {
+                riskHistory.shift();
+            }
+            try {
+                drawSparkline();
+            } catch (sparkErr) {
+                console.warn('Sparkline error:', sparkErr);
+            }
+
+            // Audible threat alarm on Critical/High (throttled to once per 4 seconds)
+            const curRisk = data.risk_level;
+            const nowMs = Date.now();
+            if ((curRisk === 'Critical' || curRisk === 'High') && (nowMs - lastAlarmSoundTime > 4000)) {
+                playAlertSound(curRisk);
+                lastAlarmSoundTime = nowMs;
+            }
+        }
+
+        // Draw SVG Sparkline
+        function drawSparkline() {
+            if (riskHistory.length < 2) return;
+            
+            const svg = document.querySelector('.sparkline-svg');
+            if (!svg) return;
+            const width = svg.clientWidth || 300; // fallback
+            const height = svg.clientHeight || 100;
+            
+            // Map 1-4 to Y coordinates (4 is top, 1 is bottom)
+            const padding = 10;
+            const usableHeight = height - (padding * 2);
+            
+            const stepX = width / (MAX_HISTORY - 1);
+            
+            let d = '';
+            for(let i=0; i<riskHistory.length; i++) {
+                const val = riskHistory[i];
+                const x = i * stepX;
+                // Normalize 1-4 to 0-1
+                const norm = (val - 1) / 3; 
+                // Y is inverted in SVG
+                const y = height - padding - (norm * usableHeight);
+                
+                if(i === 0) d += `M ${x} ${y}`;
+                else d += ` L ${x} ${y}`;
+            }
+            
+            const pathEl = document.getElementById('sparkline-path');
+            if (pathEl) {
+                pathEl.setAttribute('d', d);
+            }
+        }
+
+        // Fetch Alerts
+        async function fetchAlerts() {
+            try {
+                const res = await fetch('/api/alerts');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                document.getElementById('alerts-count').textContent = data.length;
+                renderAlerts(data);
+                
+            } catch (err) {
+                console.error('Alerts fetch error:', err);
+            }
+        }
+
+        let alertsDataStore = {};
+
+        function renderAlerts(alerts) {
+            const list = document.getElementById('alerts-list');
+            
+            if (!alerts || alerts.length === 0) {
+                list.innerHTML = '<div class="empty-state">No alerts recorded.</div>';
+                return;
+            }
+
+            // Simple DOM rebuild for simplicity and safety (using textContent implicitly by element creation)
+            list.innerHTML = '';
+            
+            alertsDataStore = {}; // clear store
+
+            alerts.forEach(alert => {
+                alertsDataStore[alert.id] = alert;
+
+                const div = document.createElement('div');
+                const levelClass = (alert.risk_level || 'low').toLowerCase();
+                div.className = `alert-item ${levelClass}`;
+                div.onclick = () => showModal(alert.id);
+
+                const header = document.createElement('div');
+                header.className = 'alert-header';
+                
+                const time = document.createElement('span');
+                time.className = 'alert-time mono';
+                time.textContent = alert.timestamp ? alert.timestamp.split(' ')[1] : '-';
+                
+                const lvl = document.createElement('span');
+                lvl.className = 'alert-level';
+                lvl.textContent = alert.risk_level || 'Unknown';
+                
+                header.appendChild(time);
+                header.appendChild(lvl);
+
+                const reason = document.createElement('div');
+                reason.className = 'alert-reason';
+                reason.textContent = (alert.reasons && alert.reasons.length > 0) ? alert.reasons[0] : 'Unknown Event';
+
+                const meta = document.createElement('div');
+                meta.className = 'alert-meta';
+                meta.textContent = `Heads: ${alert.heads ?? '-'} | Density: ${alert.density_level ?? '-'}`;
+
+                div.appendChild(header);
+                div.appendChild(reason);
+                div.appendChild(meta);
+
+                list.appendChild(div);
+            });
+        }
+
+        // CSV Incident Report Export
+        function exportAlertsCSV() {
+            const keys = Object.keys(alertsDataStore);
+            if (keys.length === 0) {
+                alert('No alerts logged yet to export.');
+                return;
+            }
+
+            const alerts = keys.map(k => alertsDataStore[k]);
+            
+            const headers = ['Alert ID', 'Timestamp', 'Risk Level', 'Reasons', 'Heads Detected', 'Density Level', 'Behavior Status', 'Snapshot Filename'];
+            
+            const rows = alerts.map(a => [
+                `"${(a.id || '').replace(/"/g, '""')}"`,
+                `"${(a.timestamp || '').replace(/"/g, '""')}"`,
+                `"${(a.risk_level || '').replace(/"/g, '""')}"`,
+                `"${((a.reasons || []).join('; ')).replace(/"/g, '""')}"`,
+                `"${a.heads !== undefined ? a.heads : ''}"`,
+                `"${(a.density_level || '').replace(/"/g, '""')}"`,
+                `"${(a.behavior_status || '').replace(/"/g, '""')}"`,
+                `"${(a.snapshot_filename || '').replace(/"/g, '""')}"`
+            ]);
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `crowd_safety_incident_report_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Fetch Health
+        async function fetchHealth() {
+            try {
+                const res = await fetch('/api/health');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                document.getElementById('sys-pipeline').textContent = data.pipeline_active ? 'Active' : 'Inactive';
+                document.getElementById('sys-camera').textContent = data.camera_connected ? 'Connected' : 'Disconnected';
+                document.getElementById('sys-models').textContent = data.models_loaded ? 'Yes' : 'No';
+                if(data.uptime_seconds !== undefined) {
+                    document.getElementById('sys-uptime').textContent = formatUptime(data.uptime_seconds);
+                }
+                
+            } catch (err) {
+                console.error('Health fetch error:', err);
+            }
+        }
+
+        // Modal Handling
+        function showModal(alertId) {
+            const alert = alertsDataStore[alertId];
+            if(!alert) return;
+
+            document.getElementById('modal-time').textContent = alert.timestamp || '-';
+            const riskEl = document.getElementById('modal-risk');
+            riskEl.textContent = alert.risk_level || '-';
+            
+            const lc = (alert.risk_level || '').toLowerCase();
+            riskEl.style.color = lc === 'critical' ? 'var(--danger)' : 
+                                 lc === 'high' ? 'var(--danger-med)' : 
+                                 lc === 'medium' ? 'var(--warning)' : 'var(--success)';
+
+            document.getElementById('modal-reasons').textContent = alert.reasons ? alert.reasons.join(', ') : '-';
+            document.getElementById('modal-heads').textContent = alert.heads ?? '-';
+            document.getElementById('modal-density').textContent = alert.density_level || '-';
+            document.getElementById('modal-behavior').textContent = alert.behavior_status || '-';
+
+            const img = document.getElementById('modal-img');
+            if (alert.snapshot_filename) {
+                img.src = `/api/alerts/snapshots/${alert.snapshot_filename}`;
+            } else {
+                img.src = '';
+            }
+
+            document.getElementById('alert-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('alert-modal').style.display = 'none';
+        }
+
+        // Video Feed Handling
+        const videoImg = document.getElementById('video-stream');
+        const videoLoading = document.getElementById('video-loading');
+        const videoError = document.getElementById('video-error');
+
+        videoImg.onload = function() {
+            videoLoading.style.display = 'none';
+            videoError.style.display = 'none';
+            videoImg.style.display = 'block';
+        };
+
+        videoImg.onerror = function() {
+            videoImg.style.display = 'none';
+            videoLoading.style.display = 'none';
+            videoError.style.display = 'flex';
+        };
+
+        function retryVideo() {
+            videoError.style.display = 'none';
+            videoLoading.style.display = 'flex';
+            // cache bust
+            videoImg.src = `/video_feed?t=${new Date().getTime()}`;
+        }
+        
+        // Handle window resize for sparkline
+        window.addEventListener('resize', () => {
+            requestAnimationFrame(drawSparkline);
+        });
+
+        // Init polling
+        fetchStatus();
+        fetchAlerts();
+        fetchHealth();
+        fetchDispatches();
+
+        setInterval(fetchStatus, 1500);
+        setInterval(fetchAlerts, 4000);
+        setInterval(fetchDispatches, 3000);
+        setInterval(fetchHealth, 10000);
+
+    </script>
+</body>
+</html>

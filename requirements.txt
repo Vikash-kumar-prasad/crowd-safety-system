@@ -1,0 +1,14 @@
+# Core AI/Computer Vision
+opencv-python==4.10.0.84
+ultralytics==8.3.28
+numpy>=1.26.4,<3
+
+# Web Backend
+flask==3.0.3
+flask-cors==5.0.0
+
+# Configuration
+python-dotenv==1.0.1
+
+# Visualization (for scripts/notebooks)
+matplotlib==3.9.2
